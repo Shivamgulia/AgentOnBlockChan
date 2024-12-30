@@ -1,0 +1,23 @@
+DUMMYLINK=0x9A57E62D53e17E8D6b1E288679d942F0AAfC9542
+OPERATOR=0x55B686adea82e702Af4831d02118493ca239E345
+
+COMMANDTORUN=screen -S geth
+
+
+geth --dev \
+     --http --http.addr "0.0.0.0" --http.port 8545 --http.api "eth,net,web3,personal,debug" --http.corsdomain "*" \
+     --ws --ws.addr "0.0.0.0" --ws.port 8546 --ws.api "eth,net,web3,personal,debug" \
+     --allow-insecure-unlock \
+     console miner
+
+
+ps aux | grep geth
+COMMANDFORLOGS=screen -r geth
+COMMANDFORTERMINALACCESS=geth attach http://localhost:8545
+
+
+COMMANDTOSENDTRANSCATION=eth.sendTransaction({from: "",to: "", value: web3.toWei(10000000000, "ether")})
+
+
+
+LASTWORKINGCONTRACT=0xC82165A718fb0E734ea0dBf41895010C99125575

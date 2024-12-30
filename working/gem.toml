@@ -1,0 +1,45 @@
+type = "directrequest"
+schemaVersion = 1
+name = "Gemini returns text"
+externalJobID = "211edec6-33aa-4a3c-87f9-9673e0687995"
+forwardingAllowed = false
+maxTaskDuration = "0s"
+contractAddress = "0xAADB337Eccb0594B19b86dE9A5afb540850FaeeF"
+evmChainID = "1337"
+minIncomingConfirmations = 0
+minContractPaymentLinkJuels = "0"
+observationSource = """
+    decode_log   [type="ethabidecodelog"
+                  abi="OracleRequest(bytes32 indexed specId, address requester, bytes32 requestId, uint256 payment, address callbackAddr, bytes4 callbackFunctionId, uint256 cancelExpiration, uint256 dataVersion, bytes data)"
+                  data="$(jobRun.logData)"
+                  topics="$(jobRun.logTopics)"]
+
+    decode_cbor  [type="cborparse" data="$(decode_log.data)"]
+
+    fetch_data   [type="http"
+                  method="POST"
+                  url="https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$(gemini_api_key)"
+                  requestData="{\\"contents\\": [{\\"parts\\": [{\\"text\\": $(decode_cbor.prompt)}]}]}"
+                  headers="[\\"Content-Type\\", \\"application/json\\"]"
+                  allowUnrestrictedNetworkAccess="true"]
+
+
+// parse        [type="jsonparse" path="candidates,0,content,parts,0,text" data="$(fetch_data)"]
+parse        [type="jsonparse" path="$(decode_cbor.path)" data="$(fetch_data)"]
+
+
+
+
+  encode_data  [type="ethabiencode" abi="(bytes32 requestId, string text)" data="{ \\"requestId\\": $(decode_log.requestId), \\"text\\": $(parse) }"]
+
+
+    encode_tx    [type="ethabiencode"
+                  abi="fulfillOracleRequest2(bytes32 requestId, uint256 payment, address callbackAddress, bytes4 callbackFunctionId, uint256 expiration, bytes calldata data)"
+                  data="{\\"requestId\\": $(decode_log.requestId), \\"payment\\":   $(decode_log.payment), \\"callbackAddress\\": $(decode_log.callbackAddr), \\"callbackFunctionId\\": $(decode_log.callbackFunctionId), \\"expiration\\": $(decode_log.cancelExpiration), \\"data\\": $(encode_data)}"
+                  ]
+
+
+    submit_tx    [type="ethtx" to="0xAADB337Eccb0594B19b86dE9A5afb540850FaeeF" data="$(encode_tx)"]
+
+    decode_log -> decode_cbor -> fetch_data -> parse -> encode_data -> encode_tx -> submit_tx
+"""
